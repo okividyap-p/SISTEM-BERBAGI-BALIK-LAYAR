@@ -82,6 +82,7 @@
         <button id="menuToggle" class="menu-toggle" aria-label="Buka menu">☰</button>
         <div><p class="eyebrow">SISTEM BERBAGI BALIK LAYAR</p><h2 id="pageHeading">Dashboard</h2></div>
         <div class="topbar-user">
+          <button id="notificationBell" class="notification-bell" type="button" aria-label="Buka notifikasi" title="Notifikasi">♧<span id="notificationBadge" class="notification-badge hidden">0</span></button>
           <div class="user-meta"><strong id="userName">Pengguna</strong><span id="userRole">MEMBER</span></div>
           <img id="userAvatar" class="avatar" alt="Foto profil pengguna" />
         </div>
@@ -122,8 +123,8 @@
         </section>
 
         <section id="scheduledPage" class="page hidden">
-          <div class="page-intro"><div><h1>Scheduled</h1><p class="muted">Rencana pekerjaan otomatis yang dapat ditambahkan bertahap.</p></div></div>
-          <article class="panel schedule-panel"><div class="schedule-icon">◷</div><h3>Penjadwalan belum diaktifkan</h3><p class="muted">Pengingat iuran, rekap berkala, dan backup terjadwal memerlukan konfigurasi fungsi server dan layanan pengiriman. Tidak ada jadwal yang berjalan sebelum dikonfigurasi dan diuji.</p></article>
+          <div class="page-intro"><div><h1>Scheduled</h1><p class="muted">Rencana pekerjaan otomatis yang dapat ditambahkan bertahap.</p></div><button id="openAnnouncement" class="primary-button admin-only" type="button">＋ Kirim Pengumuman</button></div>
+          <article class="panel schedule-panel"><div class="schedule-icon">◷</div><h3>Pengingat dalam SBBL</h3><p class="muted">Tahap pertama menggunakan notifikasi di dalam aplikasi. Pengingat otomatis setiap Kamis pukul 09.00 WITA akan diaktifkan setelah fungsi penjadwalan server dikonfigurasi dan diuji.</p><p class="muted">Status: notifikasi aplikasi disiapkan; jadwal otomatis belum berjalan.</p></article>
         </section>
 
         <section id="membersPage" class="page hidden">
@@ -151,6 +152,23 @@
     </section>
   </div>
 
+
+  <dialog id="notificationDialog" class="modal">
+    <div class="modal-card">
+      <div class="modal-heading"><div><p class="eyebrow">SBBL</p><h2>Notifikasi</h2></div><button type="button" class="icon-button" data-close="notificationDialog">×</button></div>
+      <div id="notificationList" class="notification-list"><p class="muted">Memuat notifikasi...</p></div>
+      <div class="modal-actions"><button id="markAllNotifications" type="button" class="secondary-button">Tandai semua dibaca</button><button type="button" class="primary-button" data-close="notificationDialog">Tutup</button></div>
+    </div>
+  </dialog>
+  <dialog id="announcementDialog" class="modal">
+    <form id="announcementForm" class="modal-card">
+      <div class="modal-heading"><div><p class="eyebrow">KHUSUS ADMIN</p><h2>Kirim Pengumuman</h2></div><button type="button" class="icon-button" data-close="announcementDialog">×</button></div>
+      <label>Judul<input id="announcementTitle" class="control" maxlength="100" required placeholder="Judul pengumuman" /></label>
+      <label>Pesan<textarea id="announcementBody" class="control" rows="4" maxlength="1000" required placeholder="Tulis pengumuman untuk anggota..."></textarea></label>
+      <p class="form-hint">Pengumuman akan masuk ke kotak notifikasi semua anggota yang disetujui.</p>
+      <div class="modal-actions"><button type="button" class="secondary-button" data-close="announcementDialog">Batal</button><button class="primary-button" type="submit">Kirim</button></div>
+    </form>
+  </dialog>
   <dialog id="transactionDialog" class="modal">
     <form id="transactionForm" class="modal-card">
       <div class="modal-heading"><div><p class="eyebrow">CATATAN KAS</p><h2>Tambah Transaksi</h2></div><button type="button" class="icon-button" data-close="transactionDialog">×</button></div>
@@ -176,55 +194,7 @@
     </form>
   </dialog>
 
-  <script>
-    /* SBBL loader: muat konfigurasi, pustaka Supabase, lalu aplikasi secara berurutan.
-       Nomor versi membantu browser mengambil file terbaru setelah deployment. */
-    (async function loadSBBL() {
-      const version = "20261104-2";
-      const loadScript = (src) => new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = src;
-        script.async = true;
-        script.onload = resolve;
-        script.onerror = () => reject(new Error("Gagal memuat " + src));
-        document.head.appendChild(script);
-      });
-
-      const showLoadError = (message) => {
-        const button = document.getElementById("googleLogin");
-        if (button) {
-          button.disabled = true;
-          button.textContent = message;
-        }
-        console.error("SBBL startup:", message);
-      };
-
-      try {
-        // 1. Ambil konfigurasi terbaru dari domain SBBL.
-        await loadScript("./config.js?v=" + version);
-        if (!window.SBBL_CONFIG || !window.SBBL_CONFIG.SUPABASE_URL || !window.SBBL_CONFIG.SUPABASE_ANON_KEY) {
-          throw new Error("Konfigurasi SBBL tidak lengkap. Periksa config.js.");
-        }
-
-        // 2. Muat Supabase JS. Jika CDN pertama gagal, coba CDN cadangan.
-        try {
-          await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
-        } catch (primaryError) {
-          console.warn("CDN utama Supabase gagal, mencoba CDN cadangan.", primaryError);
-          await loadScript("https://unpkg.com/@supabase/supabase-js@2");
-        }
-
-        if (!window.supabase || typeof window.supabase.createClient !== "function") {
-          throw new Error("Pustaka Supabase tidak berhasil dimuat.");
-        }
-
-        // 3. Jalankan aplikasi hanya setelah konfigurasi dan pustaka siap.
-        await loadScript("./app.js?v=" + version);
-      } catch (error) {
-        console.error(error);
-        showLoadError("SBBL belum dapat dimuat. Muat ulang halaman.");
-      }
-    })();
-  </script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
