@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#101b35" />
+  <title>SISTEM BERBAGI BALIK LAYAR | SBBL</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <main id="authScreen" class="auth-screen">
+    <section class="auth-card">
+      <div class="brand-mark">S</div>
+      <p class="eyebrow">FINANCIAL MANAGEMENT SYSTEM</p>
+      <h1>SISTEM BERBAGI<br><span>BALIK LAYAR</span></h1>
+      <p class="muted auth-description">Pengelolaan kas yang transparan, terstruktur, dan aman.</p>
+      <button id="googleLogin" class="google-button" type="button">
+        <span class="google-g">G</span> Masuk dengan Google
+      </button>
+      <p class="tiny muted">Gunakan akun Google untuk masuk ke sistem SBBL.</p>
+    </section>
+  </main>
+
+  <main id="waitingScreen" class="state-screen hidden">
+    <div class="state-card">
+      <div class="state-icon waiting-icon">◷</div>
+      <p class="eyebrow">AKSES SBBL</p>
+      <h1>Permintaan sedang ditinjau</h1>
+      <p id="waitingScreenMessage">Akun kamu belum dapat mengakses data kas.</p>
+      <button id="waitingLogout" class="secondary-button">Keluar</button>
+    </div>
+  </main>
+
+  <main id="blockedScreen" class="state-screen hidden">
+    <div class="state-card">
+      <div class="state-icon blocked-icon">!</div>
+      <p class="eyebrow">AKSES DIBATASI</p>
+      <h1>Akun tidak memiliki akses</h1>
+      <p id="blockedMessage">Akun ditolak atau dinonaktifkan. Hubungi pengelola sistem jika merasa ini kekeliruan.</p>
+      <button id="blockedLogout" class="secondary-button">Keluar</button>
+    </div>
+  </main>
+
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-mark small-mark">S</div>
+        <div><strong>SBBL</strong><span>FINANCIAL SYSTEM</span></div>
+      </div>
+      <div class="nav-label">MENU UTAMA</div>
+      <nav class="nav-menu">
+        <button class="nav-link active" data-page="dashboard"><span>▦</span> Dashboard</button>
+        <button class="nav-link" data-page="transactions"><span>⇄</span> Transactions</button>
+        <button class="nav-link" data-page="reports"><span>▤</span> Reports</button>
+        <button class="nav-link" data-page="data"><span>▧</span> Data Sources</button>
+        <button class="nav-link" data-page="scheduled"><span>◷</span> Scheduled</button>
+      </nav>
+      <div class="nav-label admin-only">MANAJEMEN</div>
+      <nav class="nav-menu admin-only">
+        <button class="nav-link" data-page="members"><span>♙</span> Members</button>
+        <button class="nav-link" data-page="categories"><span>◇</span> Categories</button>
+        <button class="nav-link" data-page="audit"><span>◴</span> Audit Log</button>
+      </nav>
+      <div class="nav-label">PENGATURAN</div>
+      <nav class="nav-menu">
+        <button class="nav-link" data-page="settings"><span>⚙</span> Settings</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="security-note"><span class="security-dot"></span><div><b>Secure workspace</b><small>Access protected</small></div></div>
+        <button id="logoutButton" class="logout-button">↪ &nbsp; Logout</button>
+      </div>
+    </aside>
+
+    <section class="main-area">
+      <header class="topbar">
+        <button id="menuToggle" class="menu-toggle" aria-label="Buka menu">☰</button>
+        <div><p class="eyebrow">SISTEM BERBAGI BALIK LAYAR</p><h2 id="pageHeading">Dashboard</h2></div>
+        <div class="topbar-user">
+          <div class="user-meta"><strong id="userName">Pengguna</strong><span id="userRole">MEMBER</span></div>
+          <img id="userAvatar" class="avatar" alt="Foto profil pengguna" />
+        </div>
+      </header>
+
+      <div class="content-wrap">
+        <section id="dashboardPage" class="page">
+          <div class="welcome-row"><div><h1>Ringkasan Keuangan</h1><p class="muted">Pantau kondisi kas dan aktivitas keuangan kelompok.</p></div><div class="period-chip" id="currentPeriod"></div></div>
+          <div class="metric-grid">
+            <article class="metric-card balance-card"><div class="metric-top"><span>Total Saldo</span><span class="metric-icon">◈</span></div><strong id="balanceValue">Rp0</strong><small>Saldo berjalan saat ini</small></article>
+            <article class="metric-card"><div class="metric-top"><span>Pemasukan Bulan Ini</span><span class="metric-icon green">↙</span></div><strong id="incomeValue">Rp0</strong><small class="positive">Uang masuk bulan berjalan</small></article>
+            <article class="metric-card"><div class="metric-top"><span>Pengeluaran Bulan Ini</span><span class="metric-icon red">↗</span></div><strong id="expenseValue">Rp0</strong><small class="negative">Uang keluar bulan berjalan</small></article>
+            <article class="metric-card"><div class="metric-top"><span>Transaksi Bulan Ini</span><span class="metric-icon blue">▤</span></div><strong id="transactionCount">0</strong><small>Transaksi aktif</small></article>
+          </div>
+          <div class="dashboard-grid">
+            <article class="panel chart-panel"><div class="panel-heading"><div><h3>Arus Kas</h3><p class="muted">Pemasukan dan pengeluaran 6 bulan terakhir</p></div><span class="panel-tag">ANALISIS</span></div><div id="cashChart" class="chart-area"><p class="muted">Grafik akan tampil setelah data tersedia.</p></div></article>
+            <article class="panel"><div class="panel-heading"><div><h3>Komposisi Kas</h3><p class="muted">Ringkasan bulan ini</p></div></div><div class="donut-wrap"><div id="donut" class="donut"><div><strong id="donutTotal">Rp0</strong><small>Total arus kas</small></div></div></div><div class="legend"><span><i class="legend-dot income-dot"></i>Pemasukan</span><span><i class="legend-dot expense-dot"></i>Pengeluaran</span></div></article>
+          </div>
+          <article class="panel recent-panel"><div class="panel-heading"><div><h3>Transaksi Terbaru</h3><p class="muted">Aktivitas kas yang baru dicatat</p></div><button class="text-button" data-goto="transactions">Lihat semua →</button></div><div class="table-scroll"><table><thead><tr><th>TANGGAL</th><th>KETERANGAN</th><th>KATEGORI</th><th>JENIS</th><th>NOMINAL</th></tr></thead><tbody id="recentRows"><tr><td colspan="5" class="empty-cell">Belum ada transaksi.</td></tr></tbody></table></div></article>
+        </section>
+
+        <section id="transactionsPage" class="page hidden">
+          <div class="page-intro"><div><h1>Transactions</h1><p class="muted">Catat uang yang benar-benar masuk dan keluar dari kas.</p></div><button id="addTransaction" class="primary-button admin-only">＋ Tambah Transaksi</button></div>
+          <div class="filter-row"><input id="transactionSearch" class="control search-control" placeholder="Cari keterangan atau nama..." /><select id="transactionTypeFilter" class="control"><option value="all">Semua jenis</option><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select><input id="transactionMonthFilter" type="month" class="control" /></div>
+          <article class="panel"><div class="table-scroll"><table><thead><tr><th>TANGGAL</th><th>KETERANGAN</th><th>SUMBER / TUJUAN</th><th>KATEGORI</th><th>JENIS</th><th>NOMINAL</th></tr></thead><tbody id="transactionRows"><tr><td colspan="6" class="empty-cell">Memuat transaksi...</td></tr></tbody></table></div></article>
+        </section>
+
+        <section id="reportsPage" class="page hidden">
+          <div class="page-intro"><div><h1>Reports</h1><p class="muted">Laporan dihitung dari transaksi yang tersimpan.</p></div><div class="export-actions"><button id="exportCsv" class="secondary-button">Unduh CSV</button><button id="printReport" class="secondary-button">Cetak / PDF</button></div></div>
+          <div class="filter-row"><label class="filter-label">Periode laporan</label><input id="reportMonth" type="month" class="control" /></div>
+          <div class="metric-grid report-metrics"><article class="metric-card"><span>Saldo Awal Periode</span><strong id="reportOpening">Rp0</strong></article><article class="metric-card"><span>Total Pemasukan</span><strong id="reportIncome" class="positive">Rp0</strong></article><article class="metric-card"><span>Total Pengeluaran</span><strong id="reportExpense" class="negative">Rp0</strong></article><article class="metric-card balance-card"><span>Saldo Akhir Periode</span><strong id="reportClosing">Rp0</strong></article></div>
+          <article class="panel"><div class="panel-heading"><div><h3>Rincian Transaksi Periode</h3><p class="muted">Termasuk saldo awal yang dibawa dari periode sebelumnya.</p></div></div><div class="table-scroll"><table><thead><tr><th>TANGGAL</th><th>KETERANGAN</th><th>JENIS</th><th>NOMINAL</th></tr></thead><tbody id="reportRows"></tbody></table></div></article>
+        </section>
+
+        <section id="dataPage" class="page hidden">
+          <div class="page-intro"><div><h1>Data Sources</h1><p class="muted">Sumber data internal yang membentuk laporan SBBL.</p></div></div>
+          <div class="info-grid"><article class="panel info-card"><span class="info-symbol">▤</span><h3>Transactions</h3><p>Catatan pemasukan dan pengeluaran yang menjadi sumber utama perhitungan saldo.</p></article><article class="panel info-card"><span class="info-symbol">♙</span><h3>Profiles</h3><p>Identitas, status persetujuan, dan peran pengguna yang login.</p></article><article class="panel info-card"><span class="info-symbol">◇</span><h3>Categories</h3><p>Pengelompokan transaksi agar laporan mudah dianalisis.</p></article><article class="panel info-card"><span class="info-symbol">◴</span><h3>Audit Logs</h3><p>Riwayat tindakan penting untuk membantu pemeriksaan dan akuntabilitas.</p></article></div>
+        </section>
+
+        <section id="scheduledPage" class="page hidden">
+          <div class="page-intro"><div><h1>Scheduled</h1><p class="muted">Rencana pekerjaan otomatis yang dapat ditambahkan bertahap.</p></div></div>
+          <article class="panel schedule-panel"><div class="schedule-icon">◷</div><h3>Penjadwalan belum diaktifkan</h3><p class="muted">Pengingat iuran, rekap berkala, dan backup terjadwal memerlukan konfigurasi fungsi server dan layanan pengiriman. Tidak ada jadwal yang berjalan sebelum dikonfigurasi dan diuji.</p></article>
+        </section>
+
+        <section id="membersPage" class="page hidden">
+          <div class="page-intro"><div><h1>Members</h1><p class="muted">Tinjau permintaan akses dan kelola status anggota.</p></div></div>
+          <div class="tabs"><button class="tab" data-member-status="pending">Menunggu</button><button class="tab active" data-member-status="approved">Disetujui</button><button class="tab" data-member-status="rejected">Ditolak</button><button class="tab" data-member-status="suspended">Dinonaktifkan</button></div>
+          <article class="panel"><div class="table-scroll"><table><thead><tr><th>NAMA</th><th>EMAIL</th><th>PERAN</th><th>STATUS</th><th>AKSI</th></tr></thead><tbody id="memberRows"><tr><td colspan="5" class="empty-cell">Memuat anggota...</td></tr></tbody></table></div></article>
+        </section>
+
+        <section id="categoriesPage" class="page hidden">
+          <div class="page-intro"><div><h1>Categories</h1><p class="muted">Kategori untuk mengelompokkan transaksi kas.</p></div><button id="addCategory" class="primary-button admin-only">＋ Tambah Kategori</button></div>
+          <article class="panel"><div class="table-scroll"><table><thead><tr><th>NAMA KATEGORI</th><th>JENIS</th><th>STATUS</th></tr></thead><tbody id="categoryRows"></tbody></table></div></article>
+        </section>
+
+        <section id="auditPage" class="page hidden">
+          <div class="page-intro"><div><h1>Audit Log</h1><p class="muted">Catatan aktivitas penting yang tercatat di database.</p></div></div>
+          <article class="panel"><div class="table-scroll"><table><thead><tr><th>WAKTU</th><th>AKTOR</th><th>AKSI</th><th>OBJEK</th><th>RINCIAN</th></tr></thead><tbody id="auditRows"></tbody></table></div></article>
+        </section>
+
+        <section id="settingsPage" class="page hidden">
+          <div class="page-intro"><div><h1>Settings</h1><p class="muted">Informasi sistem dan akun yang sedang digunakan.</p></div></div>
+          <article class="panel settings-panel"><div class="settings-row"><div><b>Nama sistem</b><p class="muted">SISTEM BERBAGI BALIK LAYAR (SBBL)</p></div><span class="status-pill active-pill">Tetap</span></div><div class="settings-row"><div><b>Akun aktif</b><p class="muted" id="settingsEmail">-</p></div></div><div class="settings-row"><div><b>Peran</b><p class="muted" id="settingsRole">-</p></div></div><div class="settings-row"><div><b>Keamanan database</b><p class="muted">Akses data dilindungi oleh Supabase Row Level Security.</p></div><span class="status-pill active-pill">Aktif</span></div></article>
+        </section>
+      </div>
+      <footer class="footer">© <span id="year"></span> SISTEM BERBAGI BALIK LAYAR · SBBL</footer>
+    </section>
+  </div>
+
+  <dialog id="transactionDialog" class="modal">
+    <form id="transactionForm" class="modal-card">
+      <div class="modal-heading"><div><p class="eyebrow">CATATAN KAS</p><h2>Tambah Transaksi</h2></div><button type="button" class="icon-button" data-close="transactionDialog">×</button></div>
+      <label>Jenis transaksi<select id="txType" class="control" required><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></label>
+      <label>Tanggal<input id="txDate" type="date" class="control" required /></label>
+      <label>Keterangan<input id="txDescription" class="control" maxlength="160" placeholder="Contoh: Pembayaran kas mingguan" required /></label>
+      <label id="counterpartyLabel">Nama pembayar / sumber pemasukan<input id="txCounterparty" class="control" maxlength="120" placeholder="Contoh: Anggota A" /></label>
+      <label>Kategori<select id="txCategory" class="control" required></select></label>
+      <label>Nominal (Rupiah)<input id="txAmount" type="number" min="1" step="1" class="control" placeholder="10000" required /></label>
+      <label>Metode pembayaran<select id="txMethod" class="control"><option value="cash">Tunai</option><option value="transfer">Transfer</option><option value="other">Lainnya</option></select></label>
+      <label>Catatan tambahan<textarea id="txNotes" class="control" rows="2" maxlength="500" placeholder="Opsional"></textarea></label>
+      <p class="form-hint">Saldo, ringkasan, dan laporan dihitung dari transaksi aktif. Pastikan uang benar-benar sudah diterima atau dibayarkan sebelum mencatatnya.</p>
+      <div class="modal-actions"><button type="button" class="secondary-button" data-close="transactionDialog">Batal</button><button class="primary-button" type="submit">Simpan Transaksi</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="categoryDialog" class="modal">
+    <form id="categoryForm" class="modal-card">
+      <div class="modal-heading"><div><p class="eyebrow">PENGELOLAAN DATA</p><h2>Tambah Kategori</h2></div><button type="button" class="icon-button" data-close="categoryDialog">×</button></div>
+      <label>Nama kategori<input id="categoryName" class="control" maxlength="60" required /></label>
+      <label>Jenis kategori<select id="categoryType" class="control"><option value="income">Pemasukan</option><option value="expense">Pengeluaran</option></select></label>
+      <div class="modal-actions"><button type="button" class="secondary-button" data-close="categoryDialog">Batal</button><button class="primary-button" type="submit">Simpan</button></div>
+    </form>
+  </dialog>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
