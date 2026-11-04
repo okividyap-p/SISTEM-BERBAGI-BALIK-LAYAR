@@ -13,6 +13,7 @@ let supabaseClient = null;
 let currentUser = null;
 let currentProfile = null;
 let transactions = [];
+let notifications = [];
 let categories = [];
 let activeMemberStatus = "approved";
 let authQueue = Promise.resolve();
@@ -128,7 +129,7 @@ async function handleSession(session){
   }
   showOnly("appShell");
   renderIdentity();applyRoleUI();
-  try{await loadAll();}
+  try{await loadAll();await loadNotifications();}
   catch(err){console.error("SBBL dashboard load:",err);toast("Login berhasil, tetapi sebagian data gagal dimuat: "+(err.message||err));}
 }
 
@@ -255,11 +256,43 @@ async function saveCategory(e){
   if(error)return toast("Gagal menambah kategori: "+error.message);
   $("categoryDialog").close();$("categoryForm").reset();await loadCategories();toast("Kategori berhasil ditambahkan.");
 }
+async function loadNotifications(){
+  if(!supabaseClient||!currentUser)return;
+  const {data,error}=await supabaseClient.from("notifications").select("id,title,body,type,created_at,read_at").eq("recipient_id",currentUser.id).order("created_at",{ascending:false}).limit(50);
+  if(error){console.warn("Notifications not available yet:",error.message);return;}
+  notifications=data||[];
+  const unread=notifications.filter(n=>!n.read_at).length;
+  const badge=$("notificationBadge");if(badge){badge.textContent=unread>99?"99+":String(unread);badge.classList.toggle("hidden",unread===0)}
+  const list=$("notificationList");if(!list)return;
+  list.innerHTML=notifications.length?notifications.map(n=>`<article class="notification-item ${n.read_at?"":"unread"}"><div class="notification-item-top"><strong>${safe(n.title)}</strong><small>${new Date(n.created_at).toLocaleString("id-ID")}</small></div><p>${safe(n.body)}</p></article>`).join(""):'<p class="muted">Belum ada notifikasi.</p>';
+}
+async function markAllNotificationsRead(){
+  const ids=notifications.filter(n=>!n.read_at).map(n=>n.id);if(!ids.length)return toast("Tidak ada notifikasi baru.");
+  const {error}=await supabaseClient.rpc("mark_my_notifications_read",{p_ids:ids});
+  if(error)return toast("Gagal memperbarui notifikasi: "+error.message);
+  await loadNotifications();toast("Semua notifikasi ditandai sudah dibaca.");
+}
+async function sendAnnouncement(event){
+  event.preventDefault();if(!isManager())return toast("Akses ditolak.");
+  const title=$("announcementTitle").value.trim(),body=$("announcementBody").value.trim();if(!title||!body)return;
+  const {data:members,error:memberError}=await supabaseClient.from("profiles").select("id").eq("status","approved");
+  if(memberError)return toast("Gagal mengambil daftar anggota: "+memberError.message);
+  const rows=(members||[]).map(m=>({recipient_id:m.id,title,body,type:"announcement",created_by:currentUser.id}));
+  if(!rows.length)return toast("Belum ada anggota yang disetujui.");
+  const {error}=await supabaseClient.from("notifications").insert(rows);
+  if(error)return toast("Pengumuman gagal dikirim: "+error.message);
+  $("announcementDialog").close();$("announcementForm").reset();await loadNotifications();toast(`Pengumuman berhasil dikirim ke ${rows.length} akun.`);
+}
+
 function bindUI(){
   document.querySelectorAll(".nav-link").forEach(btn=>btn.addEventListener("click",()=>navigate(btn.dataset.page)));
   document.querySelectorAll("[data-goto]").forEach(btn=>btn.addEventListener("click",()=>navigate(btn.dataset.goto)));
   document.querySelectorAll("[data-close]").forEach(btn=>btn.addEventListener("click",()=>$(btn.dataset.close).close()));
   $("menuToggle").addEventListener("click",()=>$("sidebar").classList.toggle("open"));
+  $("notificationBell")?.addEventListener("click",async()=>{$("notificationDialog").showModal();await loadNotifications();});
+  $("markAllNotifications")?.addEventListener("click",markAllNotificationsRead);
+  $("openAnnouncement")?.addEventListener("click",()=>{if(isManager())$("announcementDialog").showModal()});
+  $("announcementForm")?.addEventListener("submit",sendAnnouncement);
   $("addTransaction").addEventListener("click",()=>{$("transactionDialog").showModal()});
   $("transactionForm").addEventListener("submit",saveTransaction);
   $("txType").addEventListener("change",()=>setText("counterpartyLabel", $("txType").value==="income"?"Nama pembayar / sumber pemasukan":"Penerima / tujuan pengeluaran"));
