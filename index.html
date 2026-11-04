@@ -176,7 +176,55 @@
     </form>
   </dialog>
 
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script>
+    /* SBBL loader: muat konfigurasi, pustaka Supabase, lalu aplikasi secara berurutan.
+       Nomor versi membantu browser mengambil file terbaru setelah deployment. */
+    (async function loadSBBL() {
+      const version = "20261104-2";
+      const loadScript = (src) => new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Gagal memuat " + src));
+        document.head.appendChild(script);
+      });
+
+      const showLoadError = (message) => {
+        const button = document.getElementById("googleLogin");
+        if (button) {
+          button.disabled = true;
+          button.textContent = message;
+        }
+        console.error("SBBL startup:", message);
+      };
+
+      try {
+        // 1. Ambil konfigurasi terbaru dari domain SBBL.
+        await loadScript("./config.js?v=" + version);
+        if (!window.SBBL_CONFIG || !window.SBBL_CONFIG.SUPABASE_URL || !window.SBBL_CONFIG.SUPABASE_ANON_KEY) {
+          throw new Error("Konfigurasi SBBL tidak lengkap. Periksa config.js.");
+        }
+
+        // 2. Muat Supabase JS. Jika CDN pertama gagal, coba CDN cadangan.
+        try {
+          await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2");
+        } catch (primaryError) {
+          console.warn("CDN utama Supabase gagal, mencoba CDN cadangan.", primaryError);
+          await loadScript("https://unpkg.com/@supabase/supabase-js@2");
+        }
+
+        if (!window.supabase || typeof window.supabase.createClient !== "function") {
+          throw new Error("Pustaka Supabase tidak berhasil dimuat.");
+        }
+
+        // 3. Jalankan aplikasi hanya setelah konfigurasi dan pustaka siap.
+        await loadScript("./app.js?v=" + version);
+      } catch (error) {
+        console.error(error);
+        showLoadError("SBBL belum dapat dimuat. Muat ulang halaman.");
+      }
+    })();
+  </script>
 </body>
 </html>
