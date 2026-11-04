@@ -100,8 +100,9 @@ async function fetchOwnProfile(userId){
 async function handleSession(session){
   const run=++authRun;
   if(!session?.user){currentUser=null;currentProfile=null;showOnly("authScreen");const b=$("googleLogin");if(b){b.disabled=false;b.innerHTML='<span class="google-g">G</span> Masuk dengan Google'}return}
+  // Keep the login screen hidden while restoring an existing session.
+  // The auth screen is revealed only when handleSession receives no session.
   currentUser=session.user;
-  showOnly("authScreen");
   const {profile,error}=await fetchOwnProfile(currentUser.id);
   if(run!==authRun)return;
   console.info("SBBL login profile:",{email:currentUser.email,status:profile?.status,role:profile?.role,error:error?.message||null});
